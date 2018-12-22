@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+set -e
+export -n CDPATH
+
+if [ "$1" = "--debug" ]; then
+  export SOLENV_DEBUG=1
+  shift
+fi
+
+if [ -n "$SOLENV_DEBUG" ]; then
+  export PS4='+ [${BASH_SOURCE##*/}:${LINENO}] '
+  set -x
+fi
+
+READLINK=$(type -p greadlink readlink | head -1)
+if [ -z "$READLINK" ]; then
+  echo "solenv: cannot find readlink - are you missing GNU coreutils?" >&2
+  exit 1
+fi
+
+resolve_link() {
+  $READLINK "$1"
+}
+
+abs_dirname() {
+  local cwd="$(pwd)"
+  local path="$1"
+
+  while [ -n "$path" ]; do
+    cd "${path%/*}"
+    local name="${path##*/}"
+    path="$(resolve_link "$name" || true)"
+  done
+
+  pwd
+  cd "$cwd"
+}
+
+if [ -z "${SOLENV_ROOT}" ]; then
+  SOLENV_ROOT="${HOME}/.solenv"
+else
+  SOLENV_ROOT="${SOLENV_ROOT%/}"
+fi
+export SOLENV_ROOT
+
+if [ -z "${SOLENV_DIR}" ]; then
+  SOLENV_DIR="$(pwd)"
+else
+  cd "$SOLENV_DIR" 2>/dev/null || {
+    echo "solenv: cannot change working directory to \`$SOLENV_DIR'"
+    exit 1
+  } >&2
+  SOLENV_DIR="$(pwd)"
+  cd "$OLDPWD"
+fi
+export SOLENV_DIR
+
+
+shopt -s nullglob
+
+bin_path="$(abs_dirname "$0")"
+for plugin_bin in "${SOLENV_ROOT}/plugins/"*/bin; do
+  bin_path="${bin_path}:${plugin_bin}"
+done
+export PATH="${bin_path}:${PATH}"
+
+hook_path="${SOLENV_HOOK_PATH}:${SOLENV_ROOT}/solenv.d:/usr/local/etc/solenv.d:/etc/solenv.d:/usr/lib/solenv/hooks"
+for plugin_hook in "${SOLENV_ROOT}/plugins/"*/etc/solenv.d; do
+  hook_path="${hook_path}:${plugin_hook}"
+done
+export SOLENV_HOOK_PATH="$hook_path"
+
+shopt -u nullglob
+
+
+command="$1"
+case "$command" in
+"" | "-h" | "--help" )
+  echo -e "$(solenv---version)\n$(solenv-help)" >&2
+  ;;
+"-v" )
+  exec solenv---version
+  ;;
+* )
+  command_path="$(command -v "solenv-$command" || true)"
+  if [ -z "$command_path" ]; then
+    echo "solenv: no such command \`$command'" >&2
+    exit 1
+  fi
+
+  shift 1
+  exec "$command_path" "$@"
+  ;;
+esac

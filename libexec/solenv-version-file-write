@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Usage: solenv version-file-write <file> <version>
+
+set -e
+[ -n "$SOLENV_DEBUG" ] && set -x
+
+SOLENV_VERSION_FILE="$1"
+SOLENV_VERSION="$2"
+
+if [ -z "$SOLENV_VERSION" ] || [ -z "$SOLENV_VERSION_FILE" ]; then
+  solenv-help --usage version-file-write >&2
+  exit 1
+fi
+
+# Make sure the specified version is installed.
+solenv-prefix "$SOLENV_VERSION" >/dev/null
+
+# Write the version out to disk.
+echo "$SOLENV_VERSION" > "$SOLENV_VERSION_FILE"

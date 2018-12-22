@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#
+# Summary: Set or show the global solc version
+#
+# Usage: solenv global <version>
+#
+# Sets the global solc version. You can override the global version at
+# any time by setting a directory-specific version with `solenv local'
+# or by setting the `SOLENV_VERSION' environment variable.
+#
+# <version> should be a string matching a solc version known to solenv.
+# The special version string `system' will use your default system solc.
+# Run `solenv versions' for a list of available solc versions.
+
+set -e
+[ -n "$SOLENV_DEBUG" ] && set -x
+
+# Provide solenv completions
+if [ "$1" = "--complete" ]; then
+  echo system
+  exec solenv-versions --bare
+fi
+
+SOLENV_VERSION="$1"
+SOLENV_VERSION_FILE="${SOLENV_ROOT}/version"
+
+if [ -n "$SOLENV_VERSION" ]; then
+  solenv-version-file-write "$SOLENV_VERSION_FILE" "$SOLENV_VERSION"
+else
+  solenv-version-file-read "$SOLENV_VERSION_FILE" ||
+  solenv-version-file-read "${SOLENV_ROOT}/global" ||
+  solenv-version-file-read "${SOLENV_ROOT}/default" ||
+  echo system
+fi

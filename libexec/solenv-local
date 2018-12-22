@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#
+# Summary: Set or show the local application-specific solc version
+#
+# Usage: solenv local <version>
+#        solenv local --unset
+#
+# Sets the local application-specific solc version by writing the
+# version name to a file named `.solc-version'.
+#
+# When you run a solc command, solenv will look for a `.solc-version'
+# file in the current directory and each parent directory. If no such
+# file is found in the tree, solenv will use the global solc version
+# specified with `solenv global'. A version specified with the
+# `SOLENV_VERSION' environment variable takes precedence over local
+# and global versions.
+#
+# <version> should be a string matching a solc version known to solenv.
+# The special version string `system' will use your default system solc.
+# Run `solenv versions' for a list of available solc versions.
+
+set -e
+[ -n "$SOLENV_DEBUG" ] && set -x
+
+# Provide solenv completions
+if [ "$1" = "--complete" ]; then
+  echo --unset
+  echo system
+  exec solenv-versions --bare
+fi
+
+SOLENV_VERSION="$1"
+
+if [ "$SOLENV_VERSION" = "--unset" ]; then
+  rm -f .solc-version
+elif [ -n "$SOLENV_VERSION" ]; then
+  solenv-version-file-write .solc-version "$SOLENV_VERSION"
+else
+  solenv-version-file-read .solc-version ||
+  { echo "solenv: no local version configured for this directory"
+    exit 1
+  } >&2
+fi

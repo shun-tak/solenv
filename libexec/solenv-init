@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# Summary: Configure the shell environment for solenv
+# Usage: eval "$(solenv init - [--no-rehash] [<shell>])"
+
+set -e
+[ -n "$SOLENV_DEBUG" ] && set -x
+
+print=""
+no_rehash=""
+for args in "$@"
+do
+  if [ "$args" = "-" ]; then
+    print=1
+    shift
+  fi
+
+  if [ "$args" = "--no-rehash" ]; then
+    no_rehash=1
+    shift
+  fi
+done
+
+shell="$1"
+if [ -z "$shell" ]; then
+  shell="$(ps c -p "$PPID" -o 'ucomm=' 2>/dev/null || true)"
+  shell="${shell##-}"
+  shell="${shell%% *}"
+  shell="${shell:-$SHELL}"
+  shell="${shell##*/}"
+fi
+
+READLINK=$(type -p greadlink readlink | head -1)
+if [ -z "$READLINK" ]; then
+  echo "solenv: cannot find readlink - are you missing GNU coreutils?" >&2
+  exit 1
+fi
+
+resolve_link() {
+  $READLINK "$1"
+}
+
+abs_dirname() {
+  local cwd="$(pwd)"
+  local path="$1"
+
+  while [ -n "$path" ]; do
+    cd "${path%/*}"
+    local name="${path##*/}"
+    path="$(resolve_link "$name" || true)"
+  done
+
+  pwd
+  cd "$cwd"
+}
+
+root="$(abs_dirname "$0")/.."
+
+if [ -z "$print" ]; then
+  case "$shell" in
+  bash )
+    profile='~/.bash_profile'
+    ;;
+  zsh )
+    profile='~/.zshrc'
+    ;;
+  ksh )
+    profile='~/.profile'
+    ;;
+  * )
+    profile='your profile'
+    ;;
+  esac
+
+  { echo "# Load solenv automatically by adding"
+    echo "# the following to ${profile}:"
+    echo
+    echo 'eval "$(solenv init -)"'
+    echo
+  } >&2
+
+  exit 1
+fi
+
+mkdir -p "${SOLENV_ROOT}/"{shims,versions}
+
+if [[ ":${PATH}:" != *:"${SOLENV_ROOT}/shims":* ]]; then
+  echo 'export PATH="'${SOLENV_ROOT}'/shims:${PATH}"'
+fi
+
+case "$shell" in
+bash | zsh )
+  echo "source \"$root/completions/solenv.${shell}\""
+  ;;
+esac
+
+if [ -z "$no_rehash" ]; then
+  echo 'solenv rehash 2>/dev/null'
+fi
+
+commands=(`solenv-commands --sh`)
+IFS="|"
+cat <<EOS
+solenv() {
+  typeset command
+  command="\$1"
+  if [ "\$#" -gt 0 ]; then
+    shift
+  fi
+
+  case "\$command" in
+  ${commands[*]})
+    eval "\`solenv "sh-\$command" "\$@"\`";;
+  *)
+    command solenv "\$command" "\$@";;
+  esac
+}
+EOS

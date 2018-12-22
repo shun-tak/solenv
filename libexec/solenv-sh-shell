@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#
+# Summary: Set or show the shell-specific solc version
+#
+# Usage: solenv shell <version>
+#        solenv shell --unset
+#
+# Sets a shell-specific solc version by setting the `SOLENV_VERSION'
+# environment variable in your shell. This version overrides local
+# application-specific versions and the global version.
+#
+# <version> should be a string matching a solc version known to solenv.
+# The special version string `system' will use your default system solc.
+# Run `solenv versions' for a list of available solc versions.
+
+set -e
+[ -n "$SOLENV_DEBUG" ] && set -x
+
+# Provide solenv completions
+if [ "$1" = "--complete" ]; then
+  echo --unset
+  echo system
+  exec solenv-versions --bare
+fi
+
+version="$1"
+
+if [ -z "$version" ]; then
+  if [ -z "$SOLENV_VERSION" ]; then
+    echo "solenv: no shell-specific version configured" >&2
+    exit 1
+  else
+    echo "echo \"\$SOLENV_VERSION\""
+    exit
+  fi
+fi
+
+if [ "$version" = "--unset" ]; then
+  echo "unset SOLENV_VERSION"
+  exit
+fi
+
+# Make sure the specified version is installed.
+if solenv-prefix "$version" >/dev/null; then
+  echo "export SOLENV_VERSION=\"${version}\""
+else
+  echo "return 1"
+  exit 1
+fi

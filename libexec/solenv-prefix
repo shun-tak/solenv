@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Summary: Display prefix for a solc version
+# Usage: solenv prefix [<version>]
+#
+# Displays the directory where a solc version is installed. If no
+# version is given, `solenv prefix' displays the location of the
+# currently selected version.
+
+set -e
+[ -n "$SOLENV_DEBUG" ] && set -x
+
+# Provide solenv completions
+if [ "$1" = "--complete" ]; then
+  echo system
+  exec solenv-versions --bare
+fi
+
+if [ -n "$1" ]; then
+  export SOLENV_VERSION="$1"
+elif [ -z "$SOLENV_VERSION" ]; then
+  SOLENV_VERSION="$(solenv-version-name)"
+fi
+
+if [ "$SOLENV_VERSION" = "system" ]; then
+  SOLC_PATH="$(solenv-which solc)"
+  SOLC_PATH="${SOLC_PATH%/*}"
+  echo "${SOLC_PATH%/bin}"
+  exit
+fi
+
+SOLENV_PREFIX_PATH="${SOLENV_ROOT}/versions/${SOLENV_VERSION}"
+if [ ! -d "$SOLENV_PREFIX_PATH" ]; then
+  echo "solenv: version \`${SOLENV_VERSION}' not installed" >&2
+  exit 1
+fi
+
+echo "$SOLENV_PREFIX_PATH"

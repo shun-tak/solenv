@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Summary: Explain how the current solc version is set
+set -e
+[ -n "$SOLENV_DEBUG" ] && set -x
+
+if [ -n "$SOLENV_VERSION" ]; then
+  echo "SOLENV_VERSION environment variable"
+else
+  solenv-version-file
+fi

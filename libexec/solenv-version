@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Summary: Show the current solc version and its origin
+#
+# Shows the currently selected solc version and how it was
+# selected. To obtain only the version string, use `solenv
+# version-name'.
+
+set -e
+[ -n "$SOLENV_DEBUG" ] && set -x
+
+echo "$(solenv-version-name) (set by $(solenv-version-origin))"

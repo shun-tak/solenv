@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Summary: Detect the file that sets the current solenv version
+set -e
+[ -n "$SOLENV_DEBUG" ] && set -x
+
+find_local_version_file() {
+  local root="$1"
+  while [ -n "$root" ]; do
+    if [ -e "${root}/.solc-version" ]; then
+      echo "${root}/.solc-version"
+      exit
+    elif [ -e "${root}/.solenv-version" ]; then
+      echo "${root}/.solenv-version"
+      exit
+    fi
+    root="${root%/*}"
+  done
+}
+
+find_local_version_file "$SOLENV_DIR"
+[ "$SOLENV_DIR" = "$PWD" ] || find_local_version_file "$PWD"
+
+global_version_file="${SOLENV_ROOT}/version"
+
+if [ -e "$global_version_file" ]; then
+  echo "$global_version_file"
+elif [ -e "${SOLENV_ROOT}/global" ]; then
+  echo "${SOLENV_ROOT}/global"
+elif [ -e "${SOLENV_ROOT}/default" ]; then
+  echo "${SOLENV_ROOT}/default"
+else
+  echo "$global_version_file"
+fi
